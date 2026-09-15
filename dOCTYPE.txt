@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PyScript 랭킹</title>
+
+<link rel="stylesheet" href="https://pyscript.net/releases/2025.2.2/core.css">
+<script type="module" src="https://pyscript.net/releases/2025.2.2/core.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:40px 20px;background:#f2f4f8;font-family:Arial,sans-serif}
+.container{max-width:700px;margin:auto;padding:30px;background:#fff;border-radius:20px;box-shadow:0 10px 30px #0002}
+h1{text-align:center}
+.form{display:flex;gap:10px;margin:25px 0}
+input{flex:1;padding:12px;border:1px solid #ddd;border-radius:10px}
+button{border:0;padding:12px 16px;border-radius:10px;background:#4f67e8;color:#fff;cursor:pointer}
+button:hover{opacity:.85}
+.player{display:flex;align-items:center;gap:12px;padding:14px;margin:8px 0;background:#f5f6fa;border-radius:12px}
+.rank{width:40px;text-align:center;font-weight:bold}
+.name{flex:1;font-weight:bold}
+.score{font-weight:bold}
+.del{background:#e74c3c;padding:7px 10px;font-size:12px}
+.first{background:#fff4b0}
+.second{background:#e8e8e8}
+.third{background:#f3dfc5}
+#msg{text-align:center;color:#666;min-height:24px}
+.empty{text-align:center;color:#999;padding:25px}
+.clear{width:100%;margin-top:15px;background:#333}
+
+@media(max-width:600px){
+    .form{flex-direction:column}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+    <h1> 괴산고 랭킹 </h1>
+
+    <div class="form">
+        <input id="name" placeholder="닉네임">
+        <input id="score" type="number" placeholder="점수">
+        <button py-click="add">등록</button>
+    </div>
+
+    <div id="msg"></div>
+    <div id="list"></div>
+
+    <button class="clear" py-click="clear">전체 삭제</button>
+</div>
+
+<script type="py">
+from js import document, localStorage
+import json
+
+ranking = json.loads(localStorage.getItem("ranking") or "[]")
+
+def save():
+    localStorage.setItem("ranking", json.dumps(ranking))
+
+def render():
+    box = document.getElementById("list")
+    ranking.sort(key=lambda x:x["score"], reverse=True)
+
+    if not ranking:
+        box.innerHTML = '<div class="empty">아직 기록이 없습니다.</div>'
+        return
+
+    box.innerHTML = ""
+
+    for i,p in enumerate(ranking):
+        n = i+1
+        row = document.createElement("div")
+        row.className = "player " + {1:"first",2:"second",3:"third"}.get(n,"")
+
+        rank = "🥇" if n==1 else "🥈" if n==2 else "🥉" if n==3 else str(n)
+
+        row.innerHTML = f'''
+            <div class="rank">{rank}</div>
+            <div class="name"></div>
+            <div class="score">{p["score"]}점</div>
+            <button class="del">삭제</button>
+        '''
+
+        row.querySelector(".name").innerText = p["name"]
+        row.querySelector(".del").onclick = lambda e,i=i: delete(i)
+        box.appendChild(row)
+
+def add(event):
+    name = document.getElementById("name")
+    score = document.getElementById("score")
+    msg = document.getElementById("msg")
+
+    if not name.value.strip():
+        msg.innerText = "닉네임을 입력하세요."
+        return
+
+    if not score.value.strip():
+        msg.innerText = "점수를 입력하세요."
+        return
+
+    try:
+        s = int(score.value)
+    except:
+        msg.innerText = "점수는 숫자로 입력하세요."
+        return
+
+    ranking.append({"name":name.value.strip(),"score":s})
+    save()
+    render()
+
+    name.value = ""
+    score.value = ""
+    msg.innerText = ""
+
+def delete(i):
+    ranking.pop(i)
+    save()
+    render()
+
+def clear(event):
+    global ranking
+    ranking = []
+    save()
+    render()
+
+render()
+</script>
+</body>
+</html>
