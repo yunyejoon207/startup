@@ -351,7 +351,7 @@ if __name__ == "__main__":
     init_db()
 
     print("=" * 50)
-    print("괴산고 실시간 랭킹 서버가 실행되었습니다. (Flask)")
+    print("괴산고 랭킹 서버가 실행되었습니다. (Flask)")
     print()
     print(f"브라우저: http://{HOST}:{PORT}")
     print()
