@@ -356,7 +356,7 @@ if __name__ == "__main__":
     print(f"브라우저: http://{HOST}:{PORT}")
     print()
     print("GET  /api/ranking")
-    print("POST /api/ranking   {\"name\": \"홍길동\", \"score\": 100}")
+    print("POST /api/ranking   {\"name\": \"학생 이름\", \"score\": 100}")
     print()
     print("종료: Ctrl + C")
     print("=" * 50)
