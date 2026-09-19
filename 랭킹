@@ -1,0 +1,364 @@
+import sqlite3
+import threading
+from contextlib import closing
+
+from flask import Flask, Response, jsonify, request
+
+HOST = "127.0.0.1"
+PORT = 8000
+DB_FILE = "ranking.db"
+MAX_NAME_LEN = 30
+MAX_SCORE = 2 ** 63 - 1
+MAX_BODY = 64 * 1024
+
+write_lock = threading.Lock()
+
+HTML = r"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>괴산고 랭킹</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:40px 20px;background:#f2f4f8;font-family:Arial,"Noto Sans KR",sans-serif;color:#222}
+.container{width:100%;max-width:700px;margin:0 auto;padding:30px;background:#fff;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.1)}
+h1{margin:0 0 25px;text-align:center;font-size:32px}
+#msg{min-height:24px;margin-bottom:12px;text-align:center;color:#666;font-size:14px}
+.player{display:flex;align-items:center;gap:12px;padding:15px;margin:8px 0;background:#f5f6fa;border-radius:12px;transition:transform .15s ease,box-shadow .15s ease}
+.player:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.rank{width:45px;text-align:center;font-size:20px;font-weight:bold}
+.name{flex:1;font-weight:bold;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score{font-weight:bold;font-size:16px}
+.empty{padding:30px;text-align:center;color:#999}
+
+.first,.second,.third{position:relative;overflow:hidden;border:1px solid}
+.first .rank,.second .rank,.third .rank{
+    text-shadow:0 2px 2px rgba(0,0,0,.22),0 0 6px rgba(255,255,255,.7)}
+.first:hover,.second:hover,.third:hover{transform:translateY(-4px) scale(1.01)}
+
+.first{
+    background:linear-gradient(135deg,#fff9b0 0%,#ffd700 25%,#fff3a0 45%,#e6a900 70%,#fff0a8 100%);
+    border-color:#e0aa00;
+    box-shadow:0 4px 10px rgba(218,165,0,.28),
+        inset 0 2px 2px rgba(255,255,255,.9),
+        inset 0 -3px 5px rgba(150,100,0,.18)}
+.first:hover{box-shadow:0 8px 18px rgba(218,165,0,.38),
+    inset 0 2px 2px rgba(255,255,255,.95),
+    inset 0 -3px 5px rgba(150,100,0,.18)}
+
+.second{
+    background:linear-gradient(135deg,#fff 0%,#dcdcdc 25%,#fff 45%,#aeb4bb 70%,#f5f5f5 100%);
+    border-color:#b9bec4;
+    box-shadow:0 4px 10px rgba(100,100,100,.22),
+        inset 0 2px 2px rgba(255,255,255,.95),
+        inset 0 -3px 5px rgba(80,80,80,.15)}
+.second:hover{box-shadow:0 8px 18px rgba(100,100,100,.3),
+    inset 0 2px 2px rgba(255,255,255,1),
+    inset 0 -3px 5px rgba(80,80,80,.15)}
+
+.third{
+    background:linear-gradient(135deg,#ffe1bd 0%,#cd7f32 25%,#ffd0a0 45%,#9e571f 70%,#f2b477 100%);
+    border-color:#a86425;
+    box-shadow:0 4px 10px rgba(150,80,20,.25),
+        inset 0 2px 2px rgba(255,255,255,.8),
+        inset 0 -3px 5px rgba(100,50,10,.2)}
+.third:hover{box-shadow:0 8px 18px rgba(150,80,20,.35),
+    inset 0 2px 2px rgba(255,255,255,.9),
+    inset 0 -3px 5px rgba(100,50,10,.2)}
+
+.first::after,.second::after,.third::after{
+    content:"";
+    position:absolute;
+    top:-60%;left:-80%;
+    width:45%;height:220%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);
+    transform:rotate(25deg);
+    animation:medalShine 3.5s ease-in-out infinite;
+    pointer-events:none}
+.first::after{animation-duration:2.8s}
+.second::after{animation-duration:3.8s}
+.third::after{animation-duration:4.2s}
+
+@keyframes medalShine{
+    0%{left:-80%}
+    35%{left:140%}
+    100%{left:140%}
+}
+
+.refresh{width:100%;margin-top:15px;padding:13px;border:0;border-radius:10px;background:#4f67e8;color:#fff;font-size:15px;font-weight:bold;cursor:pointer}
+.refresh:hover{opacity:.85}
+.refresh:active{transform:scale(.99)}
+.update-time{margin-top:12px;text-align:center;color:#999;font-size:12px}
+
+@media(max-width:600px){
+body{padding:20px 12px}.container{padding:20px;border-radius:16px}
+h1{font-size:26px}.player{padding:13px}.rank{width:38px}.name{font-size:15px}.score{font-size:15px}
+}
+@media(prefers-reduced-motion:reduce){
+.player{transition:none}
+.first::after,.second::after,.third::after{display:none}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>괴산고 랭킹</h1>
+<div id="msg">서버에서 랭킹을 불러오는 중...</div>
+<div id="list"></div>
+<button class="refresh" type="button">랭킹 새로고침</button>
+<div id="updateTime" class="update-time"></div>
+</div>
+
+<script>
+const list = document.getElementById("list");
+const msg = document.getElementById("msg");
+const updateTime = document.getElementById("updateTime");
+
+const MEDAL = {1: "🥇", 2: "🥈", 3: "🥉"};
+const RANK_CLASS = {1: "first", 2: "second", 3: "third"};
+
+let lastData = null;
+let loading = false;
+
+function notice(text) {
+    const el = document.createElement("div");
+    el.className = "empty";
+    el.textContent = text;
+    list.replaceChildren(el);
+}
+
+function makeRow(player, rank) {
+    const row = document.createElement("div");
+    row.className = RANK_CLASS[rank] ? "player " + RANK_CLASS[rank] : "player";
+
+    const rankEl = document.createElement("div");
+    rankEl.className = "rank";
+    rankEl.textContent = MEDAL[rank] || rank;
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "name";
+    nameEl.textContent = player.name;
+    nameEl.title = player.name;
+
+    const scoreEl = document.createElement("div");
+    scoreEl.className = "score";
+    scoreEl.textContent = player.score + "점";
+
+    row.append(rankEl, nameEl, scoreEl);
+    return row;
+}
+
+function render(ranking) {
+    if (ranking.length === 0) {
+        notice("등록된 랭킹이 없습니다.");
+        msg.textContent = "";
+        return;
+    }
+
+    const frag = document.createDocumentFragment();
+    let rank = 0;
+    let prevScore = null;
+
+    ranking.forEach((player, i) => {
+        if (player.score !== prevScore) {
+            rank = i + 1;
+            prevScore = player.score;
+        }
+        frag.appendChild(makeRow(player, rank));
+    });
+
+    list.replaceChildren(frag);
+    msg.textContent = `총 ${ranking.length}명의 랭킹`;
+}
+
+async function loadRanking() {
+    if (loading) return;
+    loading = true;
+
+    try {
+        const response = await fetch("/api/ranking", {cache: "no-store"});
+        if (!response.ok) throw new Error("서버 오류 " + response.status);
+
+        const ranking = await response.json();
+        const key = JSON.stringify(ranking);
+
+        if (key !== lastData) {
+            lastData = key;
+            render(ranking);
+        }
+        updateTime.textContent = "마지막 갱신: " + new Date().toLocaleTimeString("ko-KR");
+
+    } catch (error) {
+        console.error(error);
+        lastData = null;
+        msg.textContent = "서버에 연결할 수 없습니다.";
+        notice("서버가 실행 중인지 확인하세요.");
+
+    } finally {
+        loading = false;
+    }
+}
+
+document.querySelector(".refresh").addEventListener("click", loadRanking);
+loadRanking();
+setInterval(loadRanking, 5000);
+</script>
+</body>
+</html>"""
+
+
+def connect():
+    con = sqlite3.connect(DB_FILE, timeout=5.0)
+    con.execute("PRAGMA busy_timeout = 5000")
+    return closing(con)
+
+
+def init_db():
+    with connect() as con, con:
+        con.execute("PRAGMA journal_mode = WAL")
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS ranking (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                score INTEGER NOT NULL
+            )
+        """)
+
+
+def get_ranking():
+    with connect() as con:
+        rows = con.execute(
+            "SELECT name, score FROM ranking ORDER BY score DESC, id ASC"
+        ).fetchall()
+
+    return [{"name": name, "score": score} for name, score in rows]
+
+
+def add_score(name, score):
+    with write_lock, connect() as con, con:
+        row = con.execute(
+            "SELECT score FROM ranking WHERE name = ?", (name,)
+        ).fetchone()
+
+        if row is None:
+            con.execute(
+                "INSERT INTO ranking(name, score) VALUES (?, ?)", (name, score)
+            )
+            return "created"
+
+        if score > row[0]:
+            con.execute(
+                "UPDATE ranking SET score = ? WHERE name = ?", (score, name)
+            )
+            return "updated"
+
+        return "unchanged"
+
+
+def parse_payload(data):
+    if not isinstance(data, dict):
+        raise ValueError("body must be an object")
+
+    name = data.get("name")
+    score = data.get("score")
+
+    if not isinstance(name, str):
+        raise ValueError("name must be a string")
+
+    name = name.strip()
+
+    if not name or len(name) > MAX_NAME_LEN:
+        raise ValueError("invalid name length")
+
+    if not name.isprintable():
+        raise ValueError("name contains control characters")
+
+    if isinstance(score, bool) or not isinstance(score, int):
+        raise ValueError("score must be an integer")
+
+    if not 0 <= score <= MAX_SCORE:
+        raise ValueError("score out of range")
+
+    return name, score
+
+
+MESSAGES = {
+    "created": "새로운 학생의 점수가 등록되었습니다.",
+    "updated": "최고 점수가 갱신되었습니다.",
+    "unchanged": "기존 최고점보다 낮거나 같은 점수입니다.",
+}
+
+DB_ERROR = {"ok": False, "error": "데이터베이스 처리 중 오류가 발생했습니다."}
+BAD_REQUEST = {"ok": False, "error": "name과 score를 올바르게 보내세요."}
+
+
+app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = MAX_BODY
+app.json.ensure_ascii = False
+
+
+@app.after_request
+def add_headers(response):
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return response
+
+
+@app.get("/")
+def index():
+    return Response(HTML, content_type="text/html; charset=utf-8")
+
+
+@app.get("/api/ranking")
+def read_ranking():
+    try:
+        return jsonify(get_ranking())
+    except sqlite3.Error:
+        return jsonify(DB_ERROR), 500
+
+
+@app.post("/api/ranking")
+def write_ranking():
+    try:
+        name, score = parse_payload(request.get_json(silent=True))
+    except (ValueError, TypeError):
+        return jsonify(BAD_REQUEST), 400
+
+    try:
+        result = add_score(name, score)
+        ranking = get_ranking()
+    except sqlite3.Error:
+        return jsonify(DB_ERROR), 500
+
+    return jsonify({
+        "ok": True,
+        "result": result,
+        "message": MESSAGES[result],
+        "ranking": ranking,
+    })
+
+
+@app.errorhandler(413)
+def body_too_large(error):
+    return jsonify({"ok": False, "error": "요청 본문이 너무 큽니다."}), 413
+
+
+if __name__ == "__main__":
+    init_db()
+
+    print("=" * 50)
+    print("괴산고 실시간 랭킹 서버가 실행되었습니다. (Flask)")
+    print()
+    print(f"브라우저: http://{HOST}:{PORT}")
+    print()
+    print("GET  /api/ranking")
+    print("POST /api/ranking   {\"name\": \"홍길동\", \"score\": 100}")
+    print()
+    print("종료: Ctrl + C")
+    print("=" * 50)
+
+    app.run(host=HOST, port=PORT, threaded=True)
