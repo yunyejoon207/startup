@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLAY BRIDGE | 괴산고 축제</title>
+    <link rel="stylesheet" href="main.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <main id="start-screen" class="screen" style="display: none;">
+        <h2>PLAY BRIDGE</h2>
+        <p class="screen-description">최고 기록에 도전하세요!</p>
+        <button type="button" onclick="goToParticipantScreen()">게임 시작하기</button>
+    </main>
+
+    <!-- 새로 추가한 참가자 유형 선택 화면 -->
+    <section id="participant-screen" class="screen" style="display: none;" aria-labelledby="participant-title">
+        <span class="step-label">참가자 선택</span>
+        <h2 id="participant-title">어떤 참가자인가요?</h2>
+        <p class="screen-description">해당하는 항목을 선택해 주세요.</p>
+        <div class="participant-options">
+            <button type="button" class="participant-btn" onclick="selectParticipantType('student')">
+                <span class="participant-label">재학생</span>
+                <span class="participant-description">괴산고 학생 · 학번과 이름 입력</span>
+                <span class="participant-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="participant-btn" onclick="selectParticipantType('staff')">
+                <span class="participant-label">교직원</span>
+                <span class="participant-description">학번 없이 이름만 입력</span>
+                <span class="participant-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="participant-btn" onclick="selectParticipantType('visitor')">
+                <span class="participant-label">외부인</span>
+                <span class="participant-description">축제 방문객 · 이름만 입력</span>
+                <span class="participant-arrow" aria-hidden="true">→</span>
+            </button>
+        </div>
+        <button type="button" class="back-btn" onclick="goToStartScreen()">이전으로</button>
+    </section>
+
+    <!-- 재학생: 기존 학번/이름 입력 화면과 ID 유지 -->
+    <section id="info-screen" class="screen" style="display: none;" aria-labelledby="student-title">
+        <span class="type-badge">재학생</span>
+        <h2 id="student-title">사용자 정보 입력</h2>
+        <form onsubmit="startGame(); return false;" novalidate>
+            <label class="input-label" for="studentId">학번</label>
+            <input type="text" id="studentId" placeholder="학번 입력 (4자리)" inputmode="numeric" autocomplete="off">
+            <label class="input-label" for="user">이름</label>
+            <input type="text" id="user" placeholder="이름 입력" autocomplete="off">
+            <button type="submit">시작하기</button>
+        </form>
+        <button type="button" class="back-btn" onclick="goToParticipantScreen()">참가자 다시 선택</button>
+    </section>
+
+    <!-- 교직원/외부인: 선택한 유형에 따라 제목이 바뀌는 별도 입력 화면 -->
+    <section id="guest-info-screen" class="screen" style="display: none;" aria-labelledby="guest-title">
+        <span id="guest-type" class="type-badge">교직원</span>
+        <h2 id="guest-title">교직원 정보 입력</h2>
+        <p class="screen-description">학번 없이 이름만 입력해 주세요.</p>
+        <form onsubmit="startGame(); return false;" novalidate>
+            <label class="input-label" for="guestName">이름</label>
+            <input type="text" id="guestName" placeholder="이름 입력" autocomplete="off">
+            <button type="submit">시작하기</button>
+        </form>
+        <button type="button" class="back-btn" onclick="goToParticipantScreen()">참가자 다시 선택</button>
+    </section>
+
+    <section id="stopwatch-screen" class="screen" style="display: none;" aria-labelledby="displayUser">
+        <h2 id="displayUser">학번 이름</h2>
+        <div class="stopwatch-circle">
+            <svg id="tickSvg" viewBox="0 0 200 200" aria-hidden="true"></svg>
+            <div id="timer" class="timer-text" role="timer" aria-label="경과 시간">00:00.00</div>
+        </div>
+        <button type="button" onclick="stopGame()" class="stop-btn">게임 종료</button>
+    </section>
+
+    <section id="result-screen" class="screen" style="display: none;" aria-labelledby="resultTitle">
+        <h2 id="resultTitle">게임 종료</h2>
+        <p id="resultUser"></p>
+        <p id="resultRecord"></p>
+        <p id="quizResult"></p>
+        <button type="button" onclick="goToStartScreen()" class="restart-btn">처음으로 돌아가기</button>
+    </section>
+</body>
+</html>
