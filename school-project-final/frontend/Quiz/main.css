@@ -1,0 +1,86 @@
+@font-face {
+    font-family: 'NexonMaplestory';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@2.1/MaplestoryOTFLight.woff') format('woff');
+    font-weight: 300;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'NexonMaplestory';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@2.1/MaplestoryOTFBold.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+body {
+    font-family: 'NexonMaplestory' , sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    background: linear-gradient(135deg, #d4f1ff 0%, #a8dcfb 50%, #6dd5fa 100%);
+    background-size: 200% 200%;
+    animation: bgFloat 12s ease infinite;
+}
+@keyframes bgFloat {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+@keyframes bgFloat {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+#quiz-screen {
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    padding: 50px 40px;
+    border-radius: 28px;
+    box-shadow: 0 20px 45px rgba(90, 60, 150, 0.18);
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+}
+#quiz-screen h2 {
+    color: #4a3f6b;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 24px;
+}
+#quiz-screen input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 16px 20px;
+    font-size: 15px;
+    border: 2px solid #eee4fb;
+    border-radius: 14px;
+    outline: none;
+    background-color: #faf7ff;
+    margin: 0 auto 14px auto;
+}
+#quiz-screen input:focus {
+    border-color: #b39ddb;
+    background-color: #ffffff;
+}
+#quiz-screen button {
+    width: 100%;
+    padding: 18px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #6dd5fa, #2980b9);
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(41, 128, 185, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+#quiz-screen button:hover {
+    transform: translateY(-3px);
+}
+#quiz-screen button:disabled {
+    opacity: 0.6;
+    cursor: default;
+    transform: none;
+}
