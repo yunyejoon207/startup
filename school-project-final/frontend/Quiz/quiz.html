@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLAY BRIDGE - 퀴즈</title>
+    <link rel="stylesheet" href="main.css">
+    <script src="quiz.js" defer></script>
+</head>
+<body>
+    <div id="quiz-screen">
+        <span class="tag-badge" id="quizBadge"> QUIZ</span>
+        <h2 id="quizQuestion">문제를 불러오는 중</h2>
+        <input type="text" id="quizAnswer" placeholder="정답을 입력하세요">
+        <button onclick="submitAnswer()">제출하기</button>
+        <p id="quizFeedback" style="margin-top:16px; font-size:16px;"></p>
+    </div>
+</body>
+</html>
