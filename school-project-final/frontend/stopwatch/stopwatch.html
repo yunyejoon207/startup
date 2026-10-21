@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="main.css">
+    <script src="script.js"></script>
+</head>
+<body>
+    <div id="start-screen" style="display: none;">
+        <h2>PLAY BRIDGE</h2>
+        <p style="font-size: 16px; color: #666; margin: 15px 0 25px 0;">
+            최고 기록에 도전하세요!
+        </p>
+        <button onclick="goToInfoScreen()">게임 시작하기</button>
+    </div>
+    <div id="info-screen" style="display: none;">
+        <h2>사용자 정보 입력</h2>
+        <input type="text" id="studentId" placeholder="학번 입력">
+        <br><br>
+        <input type="text" id="user" placeholder="이름 입력">
+        <br><br>
+        <button onclick="startGame()">시작하기</button>
+    </div>
+        <div id="stopwatch-screen" style="display: none;">
+    <h2 id="displayUser">학번 이름</h2>
+    <div class="stopwatch-circle">
+        <svg id="tickSvg" viewBox="0 0 200 200"></svg>
+        <div id="timer" class="timer-text">00:00.00</div>
+    </div>
+    <button onclick="stopGame()" class="stop-btn">게임 종료</button>
+</div>
+    <div id="result-screen" style="display: none;">
+    <h2 id="resultTitle">게임 종료</h2>
+    <p id="resultUser" style="font-size: 20px; margin: 15px 0;"></p>
+    <p id="resultRecord" style="font-size: 32px; font-weight: bold; color: #2c3e50;"></p>
+    <p id="quizResult" style="font-size: 18px; margin-top: 15px;"></p>
+    <button onclick="goToStartScreen()" class="restart-btn" style="margin-top: 25px;">처음으로 돌아가기</button>
+</div>
+</body>
+</html>
